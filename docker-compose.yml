@@ -1,0 +1,42 @@
+services:
+  python_app:
+    build: .
+    container_name: python_app
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - DB_HOST=mariadb
+      - DB_USER=root
+      - DB_PASSWORD=
+      - DB_NAME=flask_db
+    depends_on:
+      - mariadb
+    command: ["/bin/sh", "-c", "/usr/local/bin/wait-for.sh mariadb:3306 && python app.py"]
+
+  mariadb:
+    image: mariadb:10.4
+    container_name: mariadb_db_flask
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=flask_db
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin_flask
+    ports:
+      - "8081:80"
+    environment:
+      - PMA_HOST=mariadb
+      - PMA_USER=root
+      - PMA_PASSWORD=
+    depends_on:
+      - mariadb
+
+volumes:
+  mariadb_data:
