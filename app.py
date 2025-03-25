@@ -1,6 +1,10 @@
 from flask import Flask, request, jsonify
 from config import app, db
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+
+import datetime
+SECRET_KEY = "clave_secreta"
 
 # Modelo de Usuario (ya existente)
 class User(db.Model):
@@ -60,6 +64,27 @@ def create_profile():
     db.session.commit()
 
     return jsonify({"message": "Perfil creado exitosamente"}), 200
+
+# Ruta para login
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
+    
+    if not email or not password:
+        return jsonify({"error": "Datos incompletos"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user or not check_password_hash(user.password, password):
+        return jsonify({"error": "Credenciales incorrectas"}), 401
+
+    token = jwt.encode({
+        "user_id": user.id,
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(days=123)
+    }, SECRET_KEY, algorithm="HS256")
+
+    return jsonify({"message": "Login exitoso", "token": token, "user_id": user.id}), 200
 
 # Inicializar la base de datos si no existe
 with app.app_context():
