@@ -2,8 +2,8 @@ from flask import Flask, request, jsonify
 from config import app, db
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
-
 import datetime
+
 SECRET_KEY = "clave_secreta"
 
 # Modelo de Usuario (ya existente)
@@ -43,29 +43,53 @@ def register():
 
     return jsonify({"message": "Registro exitoso"}), 200
 
-# Ruta para registrar un perfil
+# Ruta para registrar un perfil (MODIFICADA)
 @app.route('/create_profile', methods=['POST'])
 def create_profile():
+    # 1. Obtener el token del header Authorization
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Token no proporcionado"}), 401
+
+    token = auth_header.split(" ")[1]
+
+    # 2. Decodificar el token para obtener el user_id
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = payload.get("user_id")
+    except jwt.ExpiredSignatureError:
+        return jsonify({"error": "Token expirado"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"error": "Token inválido"}), 401
+
+    # 3. Obtener los datos del body (sin user_id)
     data = request.get_json()
     name = data.get("name")
     description = data.get("description")
-    image_url = data.get("image_url")
-    user_id = data.get("user_id")  # Se asocia con un usuario registrado
+    # Asegúrate de usar la misma clave que envías desde tu app (imageUrl o image_url)
+    image_url = data.get("imageUrl")  # o data.get("image_url")
 
-    if not name or not description or not user_id:
+    if not name or not description:
         return jsonify({"error": "Datos incompletos"}), 400
 
+    # 4. Verificar que el usuario existe
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "Usuario no encontrado"}), 404
 
-    new_profile = Profile(name=name, description=description, image_url=image_url, user_id=user_id)
+    # 5. Crear el nuevo perfil
+    new_profile = Profile(
+        name=name,
+        description=description,
+        image_url=image_url,
+        user_id=user_id
+    )
     db.session.add(new_profile)
     db.session.commit()
 
     return jsonify({"message": "Perfil creado exitosamente"}), 200
 
-# Ruta para login
+# Ruta para login (ya existente)
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
