@@ -6,24 +6,24 @@ import datetime
 
 SECRET_KEY = "clave_secreta"
 
-# Modelo de Usuario (ya existente)
+# Modelo de Usuario
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
+    profile = db.relationship('Profile', backref='user', uselist=False)
 
     def __repr__(self):
         return f'<User {self.email}>'
 
-# Nuevo modelo para perfiles de usuario
+# Modelo para perfiles de usuario
 class Profile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     description = db.Column(db.String(255), nullable=False)
     image_url = db.Column(db.String(255), nullable=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
 
-# Ruta para registrar usuarios (ya existente)
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -43,7 +43,6 @@ def register():
 
     return jsonify({"message": "Registro exitoso"}), 200
 
-# Ruta para registrar un perfil (MODIFICADA)
 @app.route('/create_profile', methods=['POST'])
 def create_profile():
     # 1. Obtener el token del header Authorization
@@ -62,12 +61,16 @@ def create_profile():
     except jwt.InvalidTokenError:
         return jsonify({"error": "Token inválido"}), 401
 
-    # 3. Obtener los datos del body (sin user_id)
+    # Verificar si el usuario ya tiene un perfil
+    existing_profile = Profile.query.filter_by(user_id=user_id).first()
+    if existing_profile:
+        return jsonify({"error": "El usuario ya tiene un perfil creado"}), 400
+
+    # 3. Obtener los datos del body
     data = request.get_json()
     name = data.get("name")
     description = data.get("description")
-    # Asegúrate de usar la misma clave que envías desde tu app (imageUrl o image_url)
-    image_url = data.get("imageUrl")  # o data.get("image_url")
+    image_url = data.get("imageUrl")
 
     if not name or not description:
         return jsonify({"error": "Datos incompletos"}), 400
@@ -84,12 +87,16 @@ def create_profile():
         image_url=image_url,
         user_id=user_id
     )
-    db.session.add(new_profile)
-    db.session.commit()
+    
+    try:
+        db.session.add(new_profile)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Error al crear el perfil"}), 500
 
     return jsonify({"message": "Perfil creado exitosamente"}), 200
 
-# Ruta para login (ya existente)
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -110,7 +117,7 @@ def login():
 
     return jsonify({"message": "Login exitoso", "token": token, "user_id": user.id}), 200
 
-# Inicializar la base de datos si no existe
+# Inicializar la base de datos
 with app.app_context():
     db.create_all()
 
