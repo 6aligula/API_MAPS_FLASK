@@ -22,3 +22,13 @@ def post_location(payload: LocationIn):
             detail=f"Error guardando la ubicación: {str(e)}"
         )
 
+@router.get("/{device_id}", response_model=LocationOut)
+def get_locations(device_id: str):
+    db      = get_db()
+    service = LocationService(db)
+
+    doc = service._find_device_document(device_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="dispositivo sin datos")
+
+    return service._get_location_by_id(doc.id)
