@@ -1,25 +1,37 @@
 from functools import lru_cache
-from pydantic import Field, AliasChoices          # AliasChoices para varios nombres
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    # Acepta GCP_PROJECT **y** GOOGLE_CLOUD_PROJECT
+    # ID del proyecto
     project_id: str = Field(
         ...,
-        validation_alias=AliasChoices("GCP_PROJECT", "GOOGLE_CLOUD_PROJECT")  # ⬅️
+        validation_alias=AliasChoices("GCP_PROJECT", "GOOGLE_CLOUD_PROJECT")
     )
-    collection_name: str = "locations"
 
-    # Configuración del modelo
+    # colección para los documentos de localizaciones
+    collection_name: str = Field(
+        default="locations",
+        validation_alias=AliasChoices("LOCATIONS_COLLECTION",
+                                      "COLLECTION_LOCATIONS")
+    )
+
+    #  NUEVA colección para las rutas
+    collection_name_routes: str = Field(
+        default="rutas",
+        validation_alias=AliasChoices("ROUTES_COLLECTION",
+                                      "COLLECTION_ROUTES")
+    )
+
+    # Config del modelo
     model_config = SettingsConfigDict(
-        env_file=".env",         # como ya tenías
-        env_prefix="",           # sin prefijo; usamos alias explícitos
-        populate_by_name=True    # permite usar project_id en tests/local
+        env_file=".env",
+        env_prefix="",
+        populate_by_name=True
     )
 
 @lru_cache
 def get_settings() -> Settings:
     import os
-    # Se queda tu debug para Cloud Logging
-    print("🧪 ENV DEBUG:", {k: v for k, v in os.environ.items() if "PROJECT" in k})
+    print("ENV DEBUG:", {k: v for k, v in os.environ.items() if "PROJECT" in k})
     return Settings()
