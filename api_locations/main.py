@@ -1,11 +1,11 @@
 from fastapi import FastAPI
-from app.routers import location, routes
+from app.routers import location, routes, ml_filter
 
 
 fastapi_app = FastAPI(title="Senderos GPS API")
 
 # Incluye todos los routers que necesites
-for r in (location.router, routes.router):
+for r in (location.router, routes.router, ml_filter.router):
     fastapi_app.include_router(r)
 
 @fastapi_app.get("/health")

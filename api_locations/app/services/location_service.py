@@ -4,6 +4,8 @@ from google.cloud.firestore import Client
 from google.cloud import firestore
 from ..schemas.location import LocationIn, LocationEntry, LocationOut
 from ..core.config import get_settings
+from typing import List
+
 
 class LocationService:
     def __init__(self, db: Client):
@@ -65,7 +67,6 @@ class LocationService:
         })
         return doc_id
         
-    
     def _get_location_by_id(self, doc_id: str) -> LocationOut:
         """Recupera un documento de ubicación por su ID y lo convierte al modelo LocationOut."""
         print(f"🔍 Buscando documento con ID: {doc_id}")
@@ -111,3 +112,27 @@ class LocationService:
         
         print(f"LocationOut creado: {result}")
         return result
+    
+    def get_location_entries_by_doc(self, doc_id: str) -> List[LocationEntry]:
+        """
+        Recupera la lista de LocationEntry a partir del documento identificado por doc_id.
+        """
+        doc_ref = self.col.document(doc_id).get()
+        if not doc_ref.exists:
+            return []
+        data = doc_ref.to_dict()
+        locations_raw = data.get("locations", [])
+        current_time = datetime.utcnow()
+        processed_locations = []
+        for loc in locations_raw:
+            loc_copy = {
+                "lat": loc.get("lat", 0.0),
+                "lon": loc.get("lon", 0.0),
+                "timestamp": loc.get("timestamp", current_time),
+                "accuracy": loc.get("accuracy"),
+                "altitude": loc.get("altitude"),
+                "speed": loc.get("speed")
+            }
+            processed_locations.append(LocationEntry(**loc_copy))
+        return processed_locations
+    

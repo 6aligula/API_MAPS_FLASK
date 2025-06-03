@@ -17,7 +17,7 @@ gcloud run deploy "${SERVICE}" \
   --project="${PROJECT}" \
   --allow-unauthenticated \
   --execution-environment=gen2 \
-  --timeout=60 \
+  --timeout=120 \
   --memory=512Mi \
   --max-instances=3 \
   --set-env-vars=GCP_PROJECT="${PROJECT}"   
